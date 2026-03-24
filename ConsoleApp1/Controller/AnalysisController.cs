@@ -136,5 +136,47 @@ GROUP BY p.Category;";
                 TotalRevenue = revenue
             });
         }
+        [HttpGet("totalrevenuebyregion")]
+        public IActionResult GetTotalRevenueByRegion(string startDate, string endDate)
+        {
+            double revenue = 0;
+
+            string connectionString = _config.GetConnectionString("DefaultConnection");
+
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = @"
+                            SELECT c.Region,
+SUM(p.UnitPrice * oi.QuantitySold) AS Revenue
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+JOIN OrderItems oi ON o.OrderID = oi.OrderID
+JOIN Products p ON oi.ProductId = p.ProductId
+WHERE o.DateOfSale BETWEEN @start AND @end
+GROUP BY c.Region;";
+
+                using (var command = new SqliteCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@start", startDate);
+                    command.Parameters.AddWithValue("@end", endDate);
+
+                    var result = command.ExecuteScalar();
+
+                    if (result != DBNull.Value && result != null)
+                    {
+                        revenue = Convert.ToDouble(result);
+                    }
+                }
+            }
+
+            return Ok(new
+            {
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalRevenue = revenue
+            });
+        }
     }
 }
